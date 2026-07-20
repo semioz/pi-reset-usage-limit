@@ -29,10 +29,4 @@ The command checks how many reset credits are available, displays the selected c
 
 ## Compatibility
 
-The extension mirrors Codex's current `/usage` reset capability and uses these ChatGPT Codex account endpoints:
-
-- `GET /backend-api/wham/usage`
-- `GET /backend-api/wham/rate-limit-reset-credits`
-- `POST /backend-api/wham/rate-limit-reset-credits/consume`
-
-The backend is not a stable public API, so a future Codex change may require updating the isolated request/parsing functions in `core.ts`.
+The extension mirrors Codex's current usage reset capability. The underlying ChatGPT Codex account backend is not a stable public API, so a future Codex change may require updating the isolated request/parsing functions in `core.ts`.
