@@ -1,21 +1,28 @@
 {
   "name": "pi-reset-usage-limit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Consume Codex usage limit reset credits from Pi.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/semioz/pi-reset-rate-limit.git"
+    "url": "https://github.com/semioz/pi-reset-usage-limit.git"
   },
-  "homepage": "https://github.com/semioz/pi-reset-rate-limit#readme",
+  "homepage": "https://github.com/semioz/pi-reset-usage-limit#readme",
   "bugs": {
-    "url": "https://github.com/semioz/pi-reset-rate-limit/issues"
+    "url": "https://github.com/semioz/pi-reset-usage-limit/issues"
   },
   "files": [
     "README.md",
     "core.ts",
-    "index.ts"
+    "index.ts",
+    "tests"
   ],
+  "scripts": {
+    "test": "node --test tests/reset-usage-limit.test.ts"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
   "keywords": [
     "pi-package"
   ],
