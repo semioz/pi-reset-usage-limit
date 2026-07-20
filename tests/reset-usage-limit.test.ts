@@ -15,15 +15,20 @@ import { createResetUsageLimitExtension } from "../index.ts";
 
 const AUTH = { accessToken: "secret-token", accountId: "acct-123" };
 
-function jsonResponse(body, status = 200) {
+interface CommandHarnessOverrides {
+	accessToken?: string;
+	confirmed?: boolean;
+}
+
+function jsonResponse(body: unknown, status = 200): Response {
 	return new Response(JSON.stringify(body), {
 		status,
 		headers: { "content-type": "application/json" },
 	});
 }
 
-function tokenWithPayload(payload) {
-	const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+function tokenWithPayload(payload: Record<string, unknown>): string {
+	const encode = (value: unknown): string => Buffer.from(JSON.stringify(value)).toString("base64url");
 	return `${encode({ alg: "none" })}.${encode(payload)}.`;
 }
 
@@ -310,7 +315,7 @@ test("HTTP errors are concise and do not expose response bodies", async () => {
 	);
 });
 
-function commandHarness(overrides = {}) {
+function commandHarness(overrides: CommandHarnessOverrides = {}) {
 	let registration;
 	const registrations = [];
 	const notifications = [];
