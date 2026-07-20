@@ -36,7 +36,7 @@ function confirmationMessage(discovery: DiscoveredResetCredits): {
 } {
 	const credit = selectResetCredit(discovery.credits);
 	const lines = [
-		credit?.title ?? "Codex rate-limit reset credit",
+		credit?.title ?? "Codex usage limit reset credit",
 		`Available reset credits: ${discovery.availableCount}`,
 	];
 	if (credit?.expiresAt !== null && credit?.expiresAt !== undefined) {
@@ -46,13 +46,13 @@ function confirmationMessage(discovery: DiscoveredResetCredits): {
 	return { message: lines.join("\n"), creditId: credit?.id };
 }
 
-export function createResetRateLimitExtension(dependencies: CommandDependencies = defaultDependencies) {
-	return function resetRateLimitExtension(pi: ExtensionAPI): void {
-		pi.registerCommand("reset-rate-limit", {
-			description: "Consume a Codex rate-limit reset credit",
+export function createResetUsageLimitExtension(dependencies: CommandDependencies = defaultDependencies) {
+	return function resetUsageLimitExtension(pi: ExtensionAPI): void {
+		pi.registerCommand("reset-usage-limit", {
+			description: "Consume a Codex usage limit reset credit",
 			handler: async (_args, ctx) => {
 				if (!ctx.hasUI) {
-					ctx.ui.notify("/reset-rate-limit requires an interactive Pi session.", "error");
+					ctx.ui.notify("/reset-usage-limit requires an interactive Pi session.", "error");
 					return;
 				}
 
@@ -65,14 +65,14 @@ export function createResetRateLimitExtension(dependencies: CommandDependencies 
 					const accountId = extractChatGptAccountId(accessToken);
 					const discovery = await dependencies.discover({ accessToken, accountId });
 					if (discovery.availableCount <= 0) {
-						ctx.ui.notify("No Codex rate-limit reset credit is available.", "info");
+						ctx.ui.notify("No Codex usage limit reset credit is available.", "info");
 						return;
 					}
 
 					const confirmation = confirmationMessage(discovery);
-					const confirmed = await ctx.ui.confirm("Reset Codex rate limits?", confirmation.message);
+					const confirmed = await ctx.ui.confirm("Reset Codex usage limits?", confirmation.message);
 					if (!confirmed) {
-						ctx.ui.notify("Codex rate-limit reset cancelled.", "info");
+						ctx.ui.notify("Codex usage limit reset cancelled.", "info");
 						return;
 					}
 
@@ -86,7 +86,7 @@ export function createResetRateLimitExtension(dependencies: CommandDependencies 
 					ctx.ui.notify(formatted.message, formatted.level);
 				} catch {
 					ctx.ui.notify(
-						"Unable to reset Codex rate limits. Check your OpenAI Codex login and try again.",
+						"Unable to reset Codex usage limits. Check your OpenAI Codex login and try again.",
 						"error",
 					);
 				}
@@ -95,4 +95,4 @@ export function createResetRateLimitExtension(dependencies: CommandDependencies 
 	};
 }
 
-export default createResetRateLimitExtension();
+export default createResetUsageLimitExtension();

@@ -2,6 +2,12 @@
 
 A user-global Pi extension that adds `/reset-usage-limit`. The command consumes one real OpenAI Codex usage-limit reset credit for the account authenticated through Pi's `openai-codex` provider.
 
+## Install
+
+```bash
+pi install npm:pi-reset-usage-limit
+```
+
 ## Usage
 
 Start or reload Pi, then run:
@@ -26,7 +32,7 @@ The command checks how many reset credits are available, displays the selected c
 The extension mirrors Codex's current `/usage` reset capability and uses these ChatGPT Codex account endpoints:
 
 - `GET /backend-api/wham/usage`
-- `GET /backend-api/wham/usage-limit-reset-credits`
-- `POST /backend-api/wham/usage-limit-reset-credits/consume`
+- `GET /backend-api/wham/rate-limit-reset-credits`
+- `POST /backend-api/wham/rate-limit-reset-credits/consume`
 
 The backend is not a stable public API, so a future Codex change may require updating the isolated request/parsing functions in `core.ts`.

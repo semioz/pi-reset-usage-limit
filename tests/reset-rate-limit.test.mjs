@@ -11,7 +11,7 @@ import {
 	parseUsageCreditSummary,
 	selectResetCredit,
 } from "../core.ts";
-import { createResetRateLimitExtension } from "../index.ts";
+import { createResetUsageLimitExtension } from "../index.ts";
 
 const AUTH = { accessToken: "secret-token", accountId: "acct-123" };
 
@@ -138,7 +138,7 @@ test("parseConsumeOutcome normalizes backend and app-server outcomes", () => {
 
 test("formatConsumeOutcome returns concise user-facing messages", () => {
 	assert.deepEqual(formatConsumeOutcome("reset"), {
-		message: "Codex rate limits reset successfully.",
+		message: "Codex usage limits reset successfully.",
 		level: "info",
 	});
 	assert.equal(formatConsumeOutcome("noCredit").level, "warning");
@@ -270,6 +270,38 @@ test("consumeResetCredit omits credit_id for count-only fallback", async () => {
 	assert.deepEqual(body, { redeem_request_id: "uuid-2" });
 });
 
+test("usage-limit wording preserves the Codex rate-limit wire contract", async () => {
+	const usagePayload = {
+		rate_limit_reset_credits: { available_count: 1, applicable_available_count: 0 },
+	};
+	const creditRow = {
+		id: "credit-1",
+		reset_type: "codex_rate_limits",
+		status: "available",
+		granted_at: "2026-06-17T00:00:00Z",
+	};
+	const calls = [];
+	const fetchImpl = async (url) => {
+		calls.push(String(url));
+		if (calls.length === 1) return jsonResponse(usagePayload);
+		if (calls.length === 2) return jsonResponse({ available_count: 1, credits: [creditRow] });
+		return jsonResponse({ code: "nothing_to_reset" });
+	};
+
+	const discovery = await discoverResetCredits({ ...AUTH, fetchImpl });
+	await consumeResetCredit({
+		...AUTH,
+		fetchImpl,
+		idempotencyKey: "uuid-1",
+		creditId: discovery.credits[0].id,
+	});
+
+	assert.equal(usagePayload.rate_limit_reset_credits.applicable_available_count, 0);
+	assert.equal(creditRow.reset_type, "codex_rate_limits");
+	assert.equal(calls[1], "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits");
+	assert.equal(calls[2], "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits/consume");
+});
+
 test("HTTP errors are concise and do not expose response bodies", async () => {
 	const fetchImpl = async () => jsonResponse({ error: "sensitive backend detail" }, 500);
 	await assert.rejects(
@@ -280,11 +312,13 @@ test("HTTP errors are concise and do not expose response bodies", async () => {
 
 function commandHarness(overrides = {}) {
 	let registration;
+	const registrations = [];
 	const notifications = [];
 	const confirmations = [];
 	const pi = {
 		registerCommand(name, options) {
 			registration = { name, ...options };
+			registrations.push(registration);
 		},
 	};
 	const ctx = {
@@ -306,18 +340,18 @@ function commandHarness(overrides = {}) {
 			},
 		},
 	};
-	return { pi, ctx, notifications, confirmations, get registration() { return registration; } };
+	return { pi, ctx, notifications, confirmations, registrations, get registration() { return registration; } };
 }
 
-test("the extension registers /reset-rate-limit", () => {
+test("the extension registers only /reset-usage-limit", () => {
 	const harness = commandHarness();
-	createResetRateLimitExtension({
+	createResetUsageLimitExtension({
 		discover: async () => ({ availableCount: 0, applicableCount: 0, credits: [] }),
 		consume: async () => "reset",
 		randomUUID: () => "uuid",
 	})(harness.pi);
-	assert.equal(harness.registration.name, "reset-rate-limit");
-	assert.match(harness.registration.description, /Codex/i);
+	assert.deepEqual(harness.registrations.map(({ name }) => name), ["reset-usage-limit"]);
+	assert.match(harness.registration.description, /usage limit/i);
 });
 
 test("the command reports missing or invalid Pi Codex authentication", async () => {
@@ -326,7 +360,7 @@ test("the command reports missing or invalid Pi Codex authentication", async () 
 		if (accessToken === undefined) {
 			harness.ctx.modelRegistry.getApiKeyForProvider = async () => undefined;
 		}
-		createResetRateLimitExtension({
+		createResetUsageLimitExtension({
 			discover: async () => assert.fail("discovery should not run"),
 			consume: async () => assert.fail("consume should not run"),
 			randomUUID: () => "uuid",
@@ -340,7 +374,7 @@ test("the command reports missing or invalid Pi Codex authentication", async () 
 test("the command offers an available credit even when applicable count is zero", async () => {
 	const harness = commandHarness();
 	let consumeCalls = 0;
-	createResetRateLimitExtension({
+	createResetUsageLimitExtension({
 		discover: async () => ({ availableCount: 2, applicableCount: 0, credits: [] }),
 		consume: async () => {
 			consumeCalls += 1;
@@ -359,7 +393,7 @@ test("the command offers an available credit even when applicable count is zero"
 test("confirmation includes selected credit details and cancellation is safe", async () => {
 	const harness = commandHarness({ confirmed: false });
 	let consumeCalls = 0;
-	createResetRateLimitExtension({
+	createResetUsageLimitExtension({
 		discover: async () => ({
 			availableCount: 3,
 			applicableCount: 2,
@@ -385,19 +419,19 @@ test("confirmation includes selected credit details and cancellation is safe", a
 
 test("confirmation uses a generic title for count-only credits", async () => {
 	const harness = commandHarness({ confirmed: false });
-	createResetRateLimitExtension({
+	createResetUsageLimitExtension({
 		discover: async () => ({ availableCount: 1, applicableCount: 1, credits: [] }),
 		consume: async () => assert.fail("consume should not run"),
 		randomUUID: () => "uuid",
 	})(harness.pi);
 	await harness.registration.handler("", harness.ctx);
-	assert.match(harness.confirmations[0].message, /Codex rate-limit reset credit/);
+	assert.match(harness.confirmations[0].message, /Codex usage limit reset credit/);
 });
 
 test("a confirmed command consumes once with one UUID and reports success", async () => {
 	const harness = commandHarness();
 	const consumeCalls = [];
-	createResetRateLimitExtension({
+	createResetUsageLimitExtension({
 		discover: async () => ({ availableCount: 1, applicableCount: 1, credits: [] }),
 		consume: async (options) => { consumeCalls.push(options); return "reset"; },
 		randomUUID: () => "uuid-1",
@@ -407,14 +441,14 @@ test("a confirmed command consumes once with one UUID and reports success", asyn
 	assert.equal(consumeCalls[0].idempotencyKey, "uuid-1");
 	assert.equal(consumeCalls[0].creditId, undefined);
 	assert.deepEqual(harness.notifications.at(-1), {
-		message: "Codex rate limits reset successfully.",
+		message: "Codex usage limits reset successfully.",
 		level: "info",
 	});
 });
 
 test("unexpected command errors never expose credentials", async () => {
 	const harness = commandHarness();
-	createResetRateLimitExtension({
+	createResetUsageLimitExtension({
 		discover: async () => { throw new Error("secret-token backend detail"); },
 		consume: async () => "reset",
 		randomUUID: () => "uuid",

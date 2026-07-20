@@ -198,11 +198,11 @@ export function formatConsumeOutcome(outcome: ConsumeOutcome): {
 } {
 	switch (outcome) {
 		case "reset":
-			return { message: "Codex rate limits reset successfully.", level: "info" };
+			return { message: "Codex usage limits reset successfully.", level: "info" };
 		case "nothingToReset":
-			return { message: "Codex reports that no active rate limit needs resetting.", level: "info" };
+			return { message: "Codex reports that no active usage limit needs resetting.", level: "info" };
 		case "noCredit":
-			return { message: "No Codex rate-limit reset credit is available.", level: "warning" };
+			return { message: "No Codex usage limit reset credit is available.", level: "warning" };
 		case "alreadyRedeemed":
 			return { message: "That Codex reset credit was already redeemed.", level: "info" };
 	}
